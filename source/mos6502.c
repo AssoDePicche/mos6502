@@ -38,15 +38,11 @@ void mos6502_reset(MOS6502 *this) {
   this->SP = 0xFD;
 }
 
-uint8_t mos6502_read(const MOS6502 *this, const uint32_t address) {
-  assert(address < 0x10000);
-
+uint8_t mos6502_read(const MOS6502 *this, const uint16_t address) {
   return this->memory[address];
 }
 
-void mos6502_write(MOS6502 *this, const uint32_t address, const uint8_t value) {
-  assert(address < 0x10000);
-
+void mos6502_write(MOS6502 *this, const uint16_t address, const uint8_t value) {
   this->memory[address] = value;
 }
 

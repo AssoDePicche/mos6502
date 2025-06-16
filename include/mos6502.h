@@ -36,9 +36,9 @@ void mos6502_destruct(MOS6502 *);
 
 void mos6502_reset(MOS6502 *);
 
-uint8_t mos6502_read(const MOS6502 *, const uint32_t);
+uint8_t mos6502_read(const MOS6502 *, const uint16_t);
 
-void mos6502_write(MOS6502 *, const uint32_t, const uint8_t);
+void mos6502_write(MOS6502 *, const uint16_t, const uint8_t);
 
 void mos6502_set_status(MOS6502 *, const uint8_t);
 

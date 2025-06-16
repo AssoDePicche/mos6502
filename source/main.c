@@ -1,7 +1,9 @@
 #include <stdio.h>
 
+#include "mos6502.h"
+
 int main(const int argc, const char **argv) {
-  if (argc != 2) {
+  if (2 != argc) {
     fprintf(stderr, "error: you must provide an .asm file\n");
 
     return 1;
@@ -18,6 +20,14 @@ int main(const int argc, const char **argv) {
   }
 
   fclose(stream);
+
+  MOS6502 *CPU = mos6502_construct();
+
+  if (NULL == CPU) {
+    fprintf(stderr, "error: mos6502 could not be started\n");
+  }
+
+  mos6502_destruct(CPU);
 
   return 0;
 }

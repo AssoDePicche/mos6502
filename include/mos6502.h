@@ -2,6 +2,7 @@
 #define __MOS6502__
 
 #include <stdint.h>
+#include <stdio.h>
 
 #define MOS6502_STATUS_C 0x01
 #define MOS6502_STATUS_Z 0x02
@@ -49,5 +50,7 @@ void mos6502_clear_status(MOS6502 *, const uint8_t);
 void mos6502_push(MOS6502 *, const uint8_t);
 
 uint8_t mos6502_pop(MOS6502 *);
+
+void mos6502_debug(const MOS6502 *, FILE *);
 
 #endif

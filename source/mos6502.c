@@ -143,6 +143,16 @@ void mos6502_debug(const MOS6502 *this, FILE *stream) {
     fprintf(stream, "\n");
   }
 
+  static const uint8_t nil[MOS6502_MEM_SIZE] = {0};
+
+  if (0 == memcmp(this->memory, nil, MOS6502_MEM_SIZE)) {
+    for (int8_t i = 0; i < 43; ++i) {
+      fprintf(stream, "-");
+    }
+
+    fprintf(stream, "\nNo data in memory (all zeros)\n");
+  }
+
   for (int8_t i = 0; i < 43; ++i) {
     fprintf(stream, "-");
   }

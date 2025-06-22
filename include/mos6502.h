@@ -12,7 +12,7 @@
 #define MOS6502_STATUS_V 0x40
 #define MOS6502_STATUS_N 0x80
 
-#define MOS6502_MEM_SIZE 0x10000
+#define MOS6502_BUS_SIZE 0x10000
 #define MOS6502_ZERO_PAGE 0x0000
 #define MOS6502_STACK 0x0100
 #define MOS6502_RAM 0x0200
@@ -21,8 +21,14 @@
 #define MOS6502_VEC_RESET 0xFFFC
 #define MOS6502_VEC_IRQ 0xFFFE
 
+#define MOS6502_LDA_IMMEDIATE_MODE 0xA9
+#define MOS6502_LDA_ZERO_PAGE_MODE 0xA5
+#define MOS6502_LDA_ZERO_PAGE_X_MODE 0xB5
+#define MOS6502_JSR_ABSOLUTE_MODE 0x20
+
 typedef struct {
-  uint8_t memory[MOS6502_MEM_SIZE];
+  uint8_t BUS[MOS6502_BUS_SIZE];
+  uint32_t current_instruction_cycles;
   uint16_t PC;
   uint8_t A;
   uint8_t X;
@@ -50,6 +56,14 @@ void mos6502_clear_status(MOS6502 *, const uint8_t);
 void mos6502_push(MOS6502 *, const uint8_t);
 
 uint8_t mos6502_pop(MOS6502 *);
+
+uint8_t mos6502_fetch_byte(MOS6502 *);
+
+uint8_t mos6502_fetch_word(MOS6502 *);
+
+void mos6502_write_word(MOS6502 *, const uint8_t, const uint16_t);
+
+void mos6502_execute(MOS6502 *);
 
 void mos6502_debug(const MOS6502 *, FILE *);
 

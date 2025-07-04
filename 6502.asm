@@ -1,23 +1,16 @@
-        .org $0801      ; Program start address (C64 basic line)
-        .byte $0c, $08, $0a, $00   ; Basic start line
-        .byte $00, $00, $00, $00    ; Pointers
-        .byte $9e, $32, $30, $36    ; "RUN" (ASCII)
+section .data
+    hello_msg db "Hello World!", 0xA
 
-        ; Main program
-        .org $080d
+section .text
+    global _start
 
-start:
-        ldx #$00           ; Initialize X register (index to characters)
-loop:
-        lda message, x     ; Load character from message
-        beq done           ; If zero (end of string), we're done
-        jsr $ffd2          ; C64 KERNAL routine to print character
-        inx                ; Move to next character in string
-        jmp loop           ; Repeat loop
+_start:
+    mov eax, 4
+    mov ebx, 1
+    mov ecx, hello_msg
+    mov edx, 13
+    int 0x80
 
-done:
-        ror                ; End of program
-
-message:
-        .ascii "Hello, World!"  ; The message
-        .byte $00              ; Null terminator
+    mov eax, 1
+    xor ebx, ebx
+    int 0x80

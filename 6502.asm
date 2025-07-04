@@ -1,16 +1,20 @@
-section .data
-    hello_msg db "Hello World!", 0xA
+.ORG $0300
 
-section .text
-    global _start
+START:
+    LDX #$00
 
-_start:
-    mov eax, 4
-    mov ebx, 1
-    mov ecx, hello_msg
-    mov edx, 13
-    int 0x80
+LOOP:
+    LDA MESSAGE,X
 
-    mov eax, 1
-    xor ebx, ebx
-    int 0x80
+    BEQ END_PROGRAM
+
+    STA $FD00
+
+    INX
+    JMP LOOP
+
+END_PROGRAM:
+    BRK
+
+MESSAGE:
+    .BYTE "HELLO, WORLD!", $0D, $0A, $00

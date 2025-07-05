@@ -9,10 +9,10 @@ include_directories(include)
 
 set(COMPILE_OPTIONS -Wall -Wextra -Wpedantic -g)
 
-file(GLOB LIB_SOURCES source/*.c)
-
-add_library(mos6502_lib STATIC ${LIB_SOURCES})
+add_library(mos6502_lib STATIC source/mos6502.c)
 target_compile_options(mos6502_lib PRIVATE ${COMPILE_OPTIONS})
+target_include_directories(mos6502_lib PRIVATE include)
+
 
 find_package(FLEX REQUIRED)
 find_package(BISON REQUIRED)
@@ -31,13 +31,14 @@ FLEX_TARGET(Lexer
 ADD_FLEX_BISON_DEPENDENCY(Lexer Parser)
 
 add_executable(${PROJECT_NAME}
+    source/main.c
     ${BISON_Parser_OUTPUTS}
     ${FLEX_Lexer_OUTPUTS}
-    source/main.c
 )
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(${PROJECT_NAME} PRIVATE mos6502_lib)
+
+target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_compile_options(${PROJECT_NAME} PRIVATE ${COMPILE_OPTIONS})
 
 add_library(unity STATIC unity/src/unity.c)

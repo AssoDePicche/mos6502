@@ -23,13 +23,15 @@ int main(const int argc, const char **argv) {
 
   MOS6502 *CPU = mos6502_construct();
 
-  while (1) {
-    mos6502_execute(CPU);
-  }
-
   if (NULL == CPU) {
     fprintf(stderr, "error: mos6502 could not be started\n");
   }
+
+  while (!mos6502_should_stop(CPU)) {
+    mos6502_execute(CPU);
+  }
+
+  mos6502_dump(CPU, stdout);
 
   mos6502_destruct(CPU);
 

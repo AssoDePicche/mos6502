@@ -7,57 +7,111 @@
 
 typedef void (*mos6502_instruction_handler)(MOS6502 *);
 
-static void LDA_Immediate_Mode(MOS6502 *this) {
-  this->A = mos6502_fetch_byte(this);
-
-  const uint8_t status = (0x0 == this->A) ? MOS6502_STATUS_Z : MOS6502_STATUS_N;
-
-  mos6502_set_status(this, status);
+static uint8_t mos6502_fetch_byte(const MOS6502 *this) {
+  return mos6502_read(this, this->PC + 1) |
+         (mos6502_read(this, this->PC + 2) << 8);
 }
 
-static void LDA_Zero_Page_Mode(MOS6502 *this) {
-  const uint8_t zero_page_address = mos6502_fetch_byte(this);
+static void mos6502_update_z_n_status(MOS6502 *this, const uint16_t address) {
+  if (0 == mos6502_get_status(this, MOS6502_STATUS_Z)) {
+    mos6502_set_status(this, MOS6502_STATUS_Z);
+  }
 
-  this->A = mos6502_read(this, zero_page_address);
-
-  --this->current_instruction_cycles;
-
-  const uint8_t status = (0x0 == this->A) ? MOS6502_STATUS_Z : MOS6502_STATUS_N;
-
-  mos6502_set_status(this, status);
+  if (address & 0x80) {
+    mos6502_set_status(this, MOS6502_STATUS_N);
+  }
 }
 
-static void LDA_Zero_Page_X_Mode(MOS6502 *this) {
-  const uint8_t zero_page_x_address = mos6502_fetch_byte(this) + this->X;
+static void LDX_IMMEDIATE_MODE(MOS6502 *this) {
+  const uint8_t operand =
+      mos6502_fetch_byte(this);  // TODO: maybe just the PC+1
 
-  --this->current_instruction_cycles;
+  fprintf(stdout, "Loading %02X into REG X (LDX #$%02XX)\n", operand, operand);
 
-  this->A = mos6502_read(this, zero_page_x_address);
+  this->X = operand;
 
-  --this->current_instruction_cycles;
+  this->PC += 2;
 
-  const uint8_t status = (0x0 == this->A) ? MOS6502_STATUS_Z : MOS6502_STATUS_N;
-
-  mos6502_set_status(this, status);
+  mos6502_update_z_n_status(this, this->X);
 }
 
-static void JSR_Absolute_Mode(MOS6502 *this) {
-  const uint8_t subroutine_address = mos6502_fetch_word(this);
+static void LDA_ABSOLUTE_X_MODE(MOS6502 *this) {
+  const uint8_t operand = mos6502_fetch_byte(this);
 
-  mos6502_write_word(this, this->PC - 1, subroutine_address);
+  fprintf(stdout, "Loading into REG A from absolute address (LDA $%02X,X)\n",
+          operand);
 
-  ++this->SP;
+  const uint16_t address = operand + this->X;
 
-  this->PC = subroutine_address;
+  this->A = mos6502_read(this, address);
 
-  --this->current_instruction_cycles;
+  this->PC += 3;
+
+  mos6502_update_z_n_status(this, this->A);
 }
 
-static const mos6502_instruction_handler MOS6502_INSTRUCTIONS_TABLE[256] = {
-    [MOS6502_LDA_IMMEDIATE_MODE] = LDA_Immediate_Mode,
-    [MOS6502_LDA_ZERO_PAGE_MODE] = LDA_Zero_Page_Mode,
-    [MOS6502_LDA_ZERO_PAGE_X_MODE] = LDA_Zero_Page_X_Mode,
-    [MOS6502_JSR_ABSOLUTE_MODE] = JSR_Absolute_Mode,
+static void BEQ_RELATIVE_MODE(MOS6502 *this) {
+  if (1 == mos6502_get_status(this, MOS6502_STATUS_Z)) {
+    const uint8_t offset = mos6502_read(this, this->PC + 1);
+
+    this->PC += offset;
+
+    fprintf(stderr, "Jump to %02X address (BEQ %02X)\n", this->PC, offset);
+  }
+
+  this->PC += 2;
+}
+
+static void STA_ABSOLUTE_MODE(MOS6502 *this) {
+  const uint8_t operand = mos6502_fetch_byte(this);
+
+  fprintf(stdout, "Writing REG A value to absolute address (STA $%02X)\n",
+          operand);
+
+  mos6502_write(this, operand, this->A);
+
+  this->PC += 3;
+}
+
+static void INX_IMPLIED_MODE(MOS6502 *this) {
+  fprintf(stdout, "Incrementing REG X\n");
+
+  ++this->X;
+
+  ++this->PC;
+
+  mos6502_update_z_n_status(this, this->X);
+}
+
+static void JMP_ABSOLUTE_MODE(MOS6502 *this) {
+  const uint8_t operand = mos6502_fetch_byte(this);
+
+  fprintf(stdout, "Jumping to absolute address %02X (JMP $%02X)\n", operand,
+          operand);
+
+  this->PC = operand;
+}
+
+static void BRK_IMPLIED_MODE(MOS6502 *this) {
+  fprintf(stdout, "Break command (BRK). Jumping into BRK vector address\n");
+
+  this->PC += 2;
+
+  mos6502_push(this, this->P);
+
+  mos6502_set_status(this, MOS6502_STATUS_B | MOS6502_STATUS_I);
+
+  this->PC = MOS6502_VEC_RESET;
+}
+
+static const mos6502_instruction_handler MOS6502_INSTRUCTIONS_TABLE[] = {
+    [MOS6502_LDX_IMMEDIATE_MODE] = LDX_IMMEDIATE_MODE,
+    [MOS6502_LDA_ABSOLUTE_X_MODE] = LDA_ABSOLUTE_X_MODE,
+    [MOS6502_BEQ_RELATIVE_MODE] = BEQ_RELATIVE_MODE,
+    [MOS6502_STA_ABSOLUTE_MODE] = STA_ABSOLUTE_MODE,
+    [MOS6502_INX_IMPLIED_MODE] = INX_IMPLIED_MODE,
+    [MOS6502_JMP_ABSOLUTE_MODE] = JMP_ABSOLUTE_MODE,
+    [MOS6502_BRK_IMPLIED_MODE] = BRK_IMPLIED_MODE,
 };
 
 MOS6502 *mos6502_construct(void) {
@@ -67,7 +121,11 @@ MOS6502 *mos6502_construct(void) {
     return NULL;
   }
 
-  mos6502_reset(this);
+  memset(this, 0, sizeof(MOS6502));
+
+  this->PC = MOS6502_VEC_RESET;
+
+  this->SP = 0xFD;
 
   return this;
 }
@@ -78,38 +136,24 @@ void mos6502_destruct(MOS6502 *this) {
   free(this);
 }
 
-void mos6502_reset(MOS6502 *this) {
-  memset(this->BUS, 0, MOS6502_BUS_SIZE);
-
-  this->current_instruction_cycles = 0;
-
-  this->PC = MOS6502_VEC_RESET;
-
-  this->A = 0;
-
-  this->X = 0;
-
-  this->Y = 0;
-
-  mos6502_set_status(this, MOS6502_STATUS_I | MOS6502_STATUS_B);
-
-  this->SP = 0xFD;
-}
-
 uint8_t mos6502_read(const MOS6502 *this, const uint16_t address) {
+  fprintf(stdout, "Reading address %02X\n", address);
+
   return this->BUS[address];
 }
 
 void mos6502_write(MOS6502 *this, const uint16_t address, const uint8_t value) {
   this->BUS[address] = value;
+
+  fprintf(stdout, "Writing '%02X' on '%02X' address\n", value, address);
 }
 
 void mos6502_set_status(MOS6502 *this, const uint8_t status) {
   this->P |= (status & 0xFF);
 }
 
-uint8_t mos6502_get_status(MOS6502 *this, const uint8_t status) {
-  return (this->P & status) != 0;
+uint8_t mos6502_get_status(const MOS6502 *this, const uint8_t status) {
+  return this->P & status;
 }
 
 void mos6502_clear_status(MOS6502 *this, const uint8_t status) {
@@ -118,6 +162,11 @@ void mos6502_clear_status(MOS6502 *this, const uint8_t status) {
 
 void mos6502_push(MOS6502 *this, const uint8_t value) {
   assert(0x00 != this->SP);
+
+  fprintf(stdout, "Pushing %X on STACK %X address\n", value,
+          MOS6502_STACK + this->SP);
+
+  fprintf(stdout, "Decrementing STACK POINTER\n");
 
   this->BUS[MOS6502_STACK + this->SP] = value;
 
@@ -129,61 +178,38 @@ uint8_t mos6502_pop(MOS6502 *this) {
 
   ++this->SP;
 
+  fprintf(stdout, "Incrementing STACK POINTER\n");
+
+  fprintf(stdout, "Poping %02X from %02X address\n",
+          this->BUS[MOS6502_STACK + this->SP], MOS6502_STACK + this->SP);
+
   return this->BUS[MOS6502_STACK + this->SP];
 }
 
-uint8_t mos6502_fetch_byte(MOS6502 *this) {
-  --this->current_instruction_cycles;
-
-  return this->BUS[this->PC++];
-}
-
-static int is_big_endian(void) {
-  static const unsigned int i = 1;
-
-  static const char *c = (char *)&i;
-
-  return (*c == 0);
-}
-
-uint8_t mos6502_fetch_word(MOS6502 *this) {
-  this->current_instruction_cycles -= 2;
-
-  if (is_big_endian()) {
-    return (this->BUS[this->PC] << 8) | this->BUS[++this->PC];
-  }
-
-  return this->BUS[this->PC] | (this->BUS[++this->PC] << 8);
-}
-
-void mos6502_write_word(MOS6502 *this, const uint8_t word,
-                        const uint16_t address) {
-  this->BUS[address] = word & 0xFF;
-
-  this->BUS[address + 1] = (word >> 8);
-
-  this->current_instruction_cycles -= 2;
-}
-
 void mos6502_execute(MOS6502 *this) {
-  while (0 != this->current_instruction_cycles) {
-    const uint8_t instruction = mos6502_fetch_byte(this);
+  const uint8_t opcode = mos6502_read(this, this->PC);
 
-    fprintf(stdout, "Executing instruction %X\n", instruction);
+  fprintf(stdout, "Executing instruction %X\n", opcode);
 
-    const mos6502_instruction_handler handler =
-        MOS6502_INSTRUCTIONS_TABLE[instruction];
+  const mos6502_instruction_handler handler =
+      MOS6502_INSTRUCTIONS_TABLE[opcode];
 
-    if (NULL == handler) {
-      fprintf(stderr, "Instruction %X not implemented\n", instruction);
-      break;
-    }
+  if (NULL == handler) {
+    fprintf(stderr, "Instruction %X on address %X not implemented\n", opcode,
+            this->PC);
 
-    handler(this);
+    return;
   }
+
+  handler(this);
 }
 
-void mos6502_debug(const MOS6502 *this, FILE *stream) {
+bool mos6502_should_stop(const MOS6502 *this) {
+  return mos6502_get_status(this, MOS6502_STATUS_B) ||
+         mos6502_get_status(this, MOS6502_STATUS_I);
+}
+
+void mos6502_dump(const MOS6502 *this, FILE *stream) {
   int change_region = 0;
 
   for (uint32_t index = 0; index < MOS6502_BUS_SIZE; ++index) {
@@ -274,6 +300,25 @@ void mos6502_debug(const MOS6502 *this, FILE *stream) {
       this->A, this->X, this->Y, this->P);
 
   for (int8_t i = 0; i < 43; ++i) {
+    fprintf(stream, "-");
+  }
+
+  fprintf(stream, "\n|%-13s|\n", "REG. P FLAGS");
+
+  for (int8_t i = 0; i < 15; ++i) {
+    fprintf(stream, "-");
+  }
+
+  fprintf(stream, "\n|N|V|B|D|I|Z|C|\n|%d|%d|%d|%d|%d|%d|%d|\n",
+          mos6502_get_status(this, MOS6502_STATUS_N) ? 1 : 0,
+          mos6502_get_status(this, MOS6502_STATUS_V) ? 1 : 0,
+          mos6502_get_status(this, MOS6502_STATUS_B) ? 1 : 0,
+          mos6502_get_status(this, MOS6502_STATUS_D) ? 1 : 0,
+          mos6502_get_status(this, MOS6502_STATUS_I) ? 1 : 0,
+          mos6502_get_status(this, MOS6502_STATUS_Z) ? 1 : 0,
+          mos6502_get_status(this, MOS6502_STATUS_C) ? 1 : 0);
+
+  for (int8_t i = 0; i < 15; ++i) {
     fprintf(stream, "-");
   }
 

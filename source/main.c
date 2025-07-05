@@ -4,6 +4,7 @@
 #include "parser.tab.h"
 
 extern FILE *yyin;
+extern int yylineno;
 
 MOS6502 *CPU = NULL;
 

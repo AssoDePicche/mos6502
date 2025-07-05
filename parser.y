@@ -10,12 +10,9 @@ extern FILE *yyin;
 extern int yylex();
 extern int yylineno;
 
-extern int yylval_int;
-extern char* yylval_str;
-
 uint16_t current_address = 0x0000;
 
-extern MOS6502 *cpu_instance;
+extern MOS6502 *CPU;
 
 #define MAX_LABELS 100
 
@@ -86,8 +83,8 @@ void resolve_forward_references() {
         uint16_t label_addr;
         if (get_label_address(forward_refs[i].label_name, &label_addr)) {
             if (forward_refs[i].type == REF_TYPE_ABS_ADDR) {
-                mos6502_write(cpu_instance, forward_refs[i].address, (uint8_t)(label_addr & 0xFF));
-                mos6502_write(cpu_instance, forward_refs[i].address + 1, (uint8_t)((label_addr >> 8) & 0xFF));
+                mos6502_write(CPU, forward_refs[i].address, (uint8_t)(label_addr & 0xFF));
+                mos6502_write(CPU, forward_refs[i].address + 1, (uint8_t)((label_addr >> 8) & 0xFF));
             } else if (forward_refs[i].type == REF_TYPE_REL_OFFSET) {
                 int16_t offset = label_addr - (forward_refs[i].address + 1);
 
@@ -96,7 +93,7 @@ void resolve_forward_references() {
                             forward_refs[i].label_name, label_addr, forward_refs[i].address - 1, offset);
                     exit(1);
                 }
-                mos6502_write(cpu_instance, forward_refs[i].address, (uint8_t)(offset & 0xFF));
+                mos6502_write(CPU, forward_refs[i].address, (uint8_t)(offset & 0xFF));
             }
         } else {
             fprintf(stderr, "Error: Undefined label '%s' referenced at 0x%04X.\n",
@@ -135,9 +132,9 @@ program:
     {
         resolve_forward_references();
         printf("\n--- Assembly completed. Starting MOS 6502 simulation ---\n");
-        cpu_instance->PC = current_address;
-        while (!mos6502_should_stop(cpu_instance)) {
-            mos6502_execute(cpu_instance);
+        CPU->PC = current_address;
+        while (!mos6502_should_stop(CPU)) {
+            mos6502_execute(CPU);
         }
         printf("\n--- Simulation finished ---\n");
     }
@@ -165,42 +162,42 @@ label_definition:
 
 instruction:
     LDX_OP HASH immediate_operand {
-        mos6502_write(cpu_instance, current_address++, MOS6502_LDX_IMMEDIATE_MODE);
-        mos6502_write(cpu_instance, current_address++, (uint8_t)$3);
+        mos6502_write(CPU, current_address++, MOS6502_LDX_IMMEDIATE_MODE);
+        mos6502_write(CPU, current_address++, (uint8_t)$3);
     }
     | LDA_OP label_name COMMA REG_X {
-        mos6502_write(cpu_instance, current_address++, MOS6502_LDA_ABSOLUTE_X_MODE);
+        mos6502_write(CPU, current_address++, MOS6502_LDA_ABSOLUTE_X_MODE);
         add_forward_ref(current_address, $2, REF_TYPE_ABS_ADDR);
         current_address += 2;
         free($2);
     }
     | BEQ_OP label_name {
-        mos6502_write(cpu_instance, current_address++, MOS6502_BEQ_RELATIVE_MODE);
+        mos6502_write(CPU, current_address++, MOS6502_BEQ_RELATIVE_MODE);
         add_forward_ref(current_address, $2, REF_TYPE_REL_OFFSET);
         current_address++;
         free($2);
     }
     | STA_OP address_operand {
-        mos6502_write(cpu_instance, current_address++, MOS6502_STA_ABSOLUTE_MODE);
-        mos6502_write(cpu_instance, current_address++, (uint8_t)($2 & 0xFF));
-        mos6502_write(cpu_instance, current_address++, (uint8_t)(($2 >> 8) & 0xFF));
+        mos6502_write(CPU, current_address++, MOS6502_STA_ABSOLUTE_MODE);
+        mos6502_write(CPU, current_address++, (uint8_t)($2 & 0xFF));
+        mos6502_write(CPU, current_address++, (uint8_t)(($2 >> 8) & 0xFF));
     }
     | INX_OP {
-        mos6502_write(cpu_instance, current_address++, MOS6502_INX_IMPLIED_MODE);
+        mos6502_write(CPU, current_address++, MOS6502_INX_IMPLIED_MODE);
     }
     | JMP_OP address_operand {
-        mos6502_write(cpu_instance, current_address++, MOS6502_JMP_ABSOLUTE_MODE);
-        mos6502_write(cpu_instance, current_address++, (uint8_t)($2 & 0xFF));
-        mos6502_write(cpu_instance, current_address++, (uint8_t)(($2 >> 8) & 0xFF));
+        mos6502_write(CPU, current_address++, MOS6502_JMP_ABSOLUTE_MODE);
+        mos6502_write(CPU, current_address++, (uint8_t)($2 & 0xFF));
+        mos6502_write(CPU, current_address++, (uint8_t)(($2 >> 8) & 0xFF));
     }
     | JMP_OP label_name {
-        mos6502_write(cpu_instance, current_address++, MOS6502_JMP_ABSOLUTE_MODE);
+        mos6502_write(CPU, current_address++, MOS6502_JMP_ABSOLUTE_MODE);
         add_forward_ref(current_address, $2, REF_TYPE_ABS_ADDR);
         current_address += 2;
         free($2);
     }
     | BRK_OP {
-        mos6502_write(cpu_instance, current_address++, MOS6502_BRK_IMPLIED_MODE);
+        mos6502_write(CPU, current_address++, MOS6502_BRK_IMPLIED_MODE);
     }
 ;
 
@@ -219,14 +216,14 @@ byte_list:
 
 byte_item:
     HEX_VALUE {
-        mos6502_write(cpu_instance, current_address++, (uint8_t)$1);
+        mos6502_write(CPU, current_address++, (uint8_t)$1);
     }
     | DEC_VALUE {
-        mos6502_write(cpu_instance, current_address++, (uint8_t)$1);
+        mos6502_write(CPU, current_address++, (uint8_t)$1);
     }
     | STRING_LITERAL {
         for (int i = 0; i < strlen($1); ++i) {
-            mos6502_write(cpu_instance, current_address++, (uint8_t)$1[i]);
+            mos6502_write(CPU, current_address++, (uint8_t)$1[i]);
         }
         free($1);
     }

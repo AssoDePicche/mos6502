@@ -1,6 +1,15 @@
 #include <stdio.h>
 
 #include "mos6502.h"
+#include "parser.tab.h"
+
+extern FILE *yyin;
+
+MOS6502 *CPU = NULL;
+
+void yyerror(const char *s) {
+  fprintf(stderr, "Parse error at line %d: %s\n", yylineno, s);
+}
 
 int main(const int argc, const char **argv) {
   if (2 != argc) {
@@ -11,15 +20,13 @@ int main(const int argc, const char **argv) {
 
   const char *filename = argv[1];
 
-  FILE *stream = fopen(filename, "r");
+  yyin = fopen(filename, "r");
 
-  if (NULL == stream) {
+  if (NULL == yyin) {
     fprintf(stderr, "error: unable to open the '%s' file\n", filename);
 
     return 1;
   }
-
-  fclose(stream);
 
   MOS6502 *CPU = mos6502_construct();
 
@@ -27,13 +34,13 @@ int main(const int argc, const char **argv) {
     fprintf(stderr, "error: mos6502 could not be started\n");
   }
 
-  while (!mos6502_should_stop(CPU)) {
-    mos6502_execute(CPU);
-  }
+  yyparse();
 
-  mos6502_dump(CPU, stdout);
+  fclose(yyin);
 
   mos6502_destruct(CPU);
+
+  CPU = NULL;
 
   return 0;
 }

@@ -15,10 +15,14 @@ static uint8_t mos6502_fetch_byte(const MOS6502 *this) {
 static void mos6502_update_z_n_status(MOS6502 *this, const uint16_t address) {
   if (0 == mos6502_get_status(this, MOS6502_STATUS_Z)) {
     mos6502_set_status(this, MOS6502_STATUS_Z);
+  } else {
+    mos6502_clear_status(this, MOS6502_STATUS_Z);
   }
 
   if (address & 0x80) {
     mos6502_set_status(this, MOS6502_STATUS_N);
+  } else {
+    mos6502_clear_status(this, MOS6502_STATUS_N);
   }
 }
 
@@ -161,8 +165,6 @@ void mos6502_clear_status(MOS6502 *this, const uint8_t status) {
 }
 
 void mos6502_push(MOS6502 *this, const uint8_t value) {
-  assert(0x00 != this->SP);
-
   fprintf(stdout, "Pushing %X on STACK %X address\n", value,
           MOS6502_STACK + this->SP);
 
@@ -174,8 +176,6 @@ void mos6502_push(MOS6502 *this, const uint8_t value) {
 }
 
 uint8_t mos6502_pop(MOS6502 *this) {
-  assert(0xFF != this->SP);
-
   ++this->SP;
 
   fprintf(stdout, "Incrementing STACK POINTER\n");

@@ -65,51 +65,51 @@ MESSAGE:
 A saída é esta:
 
 ```bash
-Writing '0xA2' on '0x0300' address
-Writing '0x00' on '0x0301' address
-Writing '0xBD' on '0x0302' address
-Writing '0xF0' on '0x0305' address
-Writing '0x8D' on '0x0307' address
-Writing '0x00' on '0x0308' address
-Writing '0xFD' on '0x0309' address
-Writing '0xE8' on '0x030A' address
-Writing '0x4C' on '0x030B' address
-Writing '0x00' on '0x030E' address
-Writing '0x48' on '0x030F' address
-Writing '0x45' on '0x0310' address
-Writing '0x4C' on '0x0311' address
-Writing '0x4C' on '0x0312' address
-Writing '0x4F' on '0x0313' address
-Writing '0x2C' on '0x0314' address
-Writing '0x20' on '0x0315' address
-Writing '0x57' on '0x0316' address
-Writing '0x4F' on '0x0317' address
-Writing '0x52' on '0x0318' address
-Writing '0x4C' on '0x0319' address
-Writing '0x44' on '0x031A' address
-Writing '0x21' on '0x031B' address
-Writing '0x0D' on '0x031C' address
-Writing '0x0A' on '0x031D' address
-Writing '0x00' on '0x031E' address
+MOS6502: Writing '0xA2' on '0x0300' address
+MOS6502: Writing '0x00' on '0x0301' address
+MOS6502: Writing '0xBD' on '0x0302' address
+MOS6502: Writing '0xF0' on '0x0305' address
+MOS6502: Writing '0x8D' on '0x0307' address
+MOS6502: Writing '0x00' on '0x0308' address
+MOS6502: Writing '0xFD' on '0x0309' address
+MOS6502: Writing '0xE8' on '0x030A' address
+MOS6502: Writing '0x4C' on '0x030B' address
+MOS6502: Writing '0x00' on '0x030E' address
+MOS6502: Writing '0x48' on '0x030F' address
+MOS6502: Writing '0x45' on '0x0310' address
+MOS6502: Writing '0x4C' on '0x0311' address
+MOS6502: Writing '0x4C' on '0x0312' address
+MOS6502: Writing '0x4F' on '0x0313' address
+MOS6502: Writing '0x2C' on '0x0314' address
+MOS6502: Writing '0x20' on '0x0315' address
+MOS6502: Writing '0x57' on '0x0316' address
+MOS6502: Writing '0x4F' on '0x0317' address
+MOS6502: Writing '0x52' on '0x0318' address
+MOS6502: Writing '0x4C' on '0x0319' address
+MOS6502: Writing '0x44' on '0x031A' address
+MOS6502: Writing '0x21' on '0x031B' address
+MOS6502: Writing '0x0D' on '0x031C' address
+MOS6502: Writing '0x0A' on '0x031D' address
+MOS6502: Writing '0x00' on '0x031E' address
 Yacc: Resolving forward references...
-Writing '0x0F' on '0x0303' address
-Writing '0x03' on '0x0304' address
-Writing '0x07' on '0x0306' address
-Writing '0x02' on '0x030C' address
-Writing '0x03' on '0x030D' address
+MOS6502: Writing '0x0F' on '0x0303' address
+MOS6502: Writing '0x03' on '0x0304' address
+MOS6502: Writing '0x07' on '0x0306' address
+MOS6502: Writing '0x02' on '0x030C' address
+MOS6502: Writing '0x03' on '0x030D' address
 Yacc: Forward references resolved.
 Yacc: MOS6502 execution started.
-Reading address '0x031F'
-Executing instruction 0x00 at 0x031F
-Break command (BRK). Pushing PC and P, jumping to IRQ/BRK vector.
-Pushing 0x03 on STACK 0x01FD address
-Decrementing STACK POINTER to 0xFC
-Pushing 0x21 on STACK 0x01FC address
-Decrementing STACK POINTER to 0xFB
-Pushing 0x10 on STACK 0x01FB address
-Decrementing STACK POINTER to 0xFA
-Reading address '0xFFFE'
-Reading address '0xFFFF'
+MOS6502: Reading address '0x031F'
+MOS6502: Executing instruction 0x00 at 0x031F
+MOS6502: Break command (BRK). Pushing PC and P, jumping to IRQ/BRK vector.
+MOS6502: Pushing 0x03 on STACK 0x01FD address
+MOS6502: Decrementing STACK POINTER to 0xFC
+MOS6502: Pushing 0x21 on STACK 0x01FC address
+MOS6502: Decrementing STACK POINTER to 0xFB
+MOS6502: Pushing 0x10 on STACK 0x01FB address
+MOS6502: Decrementing STACK POINTER to 0xFA
+MOS6502: Reading address '0xFFFE'
+MOS6502: Reading address '0xFFFF'
 -------------------------------------------
 STACK
 ADDRESS 0x01FB 10 .

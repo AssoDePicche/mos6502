@@ -158,6 +158,12 @@ Yacc: MOS6502 execution finished.
 
 Ao fim da execução do programa em assembly carregado no emulador é possível ver o dump de sua memória (separada em seções) e de seus registradores.
 
+Obs: Para executar os testes unitários implementados em **tests/mos6502.c** é preciso executar o seguinte comando após compilar o programa:
+
+```bash
+./build/tests
+```
+
 ## Equipe
 
 Samuel do Prado Rodrigues (GU3052788)

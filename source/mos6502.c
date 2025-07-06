@@ -148,19 +148,13 @@ void mos6502_destruct(MOS6502 *this) {
 
 uint8_t mos6502_read(const MOS6502 *this, const uint16_t address) {
   fprintf(stdout, "Reading address '0x%04X'\n", address);
-  if (address >= MOS6502_BUS_SIZE) {
-    fprintf(stderr, "Error: Read out of bounds address 0x%04X\n", address);
-    exit(1);
-  }
+
   return this->BUS[address];
 }
 
 void mos6502_write(MOS6502 *this, const uint16_t address, const uint8_t value) {
   fprintf(stdout, "Writing '0x%02X' on '0x%04X' address\n", value, address);
-  if (address >= MOS6502_BUS_SIZE) {
-    fprintf(stderr, "Error: Write out of bounds address 0x%04X\n", address);
-    exit(1);
-  }
+
   this->BUS[address] = value;
 }
 
@@ -287,8 +281,8 @@ void mos6502_dump(const MOS6502 *this, FILE *stream) {
   fprintf(stream, "\n");
 
   fprintf(stream,
-          "|%-6s|%-6s|%-6s|%-6s|%-6s|%-6s|\n|0x%04X|0x%02X|0x%02X|0x%02X|0x%"
-          "02X|0x%02X|\n",
+          "|%-6s|%-6s|%-6s|%-6s|%-6s|%-6s|\n|0x%04X|0x%04X|0x%04X|0x%04X|0x%"
+          "04X|0x%04X|\n",
           "PC", "SP", "REG. A", "REG. X", "REG. Y", "REG. P", this->PC,
           this->SP, this->A, this->X, this->Y, this->P);
 

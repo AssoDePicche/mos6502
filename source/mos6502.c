@@ -260,7 +260,7 @@ void mos6502_dump(const MOS6502 *this, FILE *stream) {
       change_region = 0;
     }
 
-    fprintf(stream, "ADD 0x%04X %02X ", index, byte_val);
+    fprintf(stream, "ADDRESS 0x%04X %02X ", index, byte_val);
     fprintf(stream, "%c", isprint(byte_val) ? byte_val : '.');
     fprintf(stream, "\n");
   }

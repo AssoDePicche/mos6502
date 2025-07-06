@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "mos6502.h"
 #include "parser.tab.h"
@@ -14,92 +15,116 @@ uint16_t current_address = 0x0000;
 
 extern MOS6502 *CPU;
 
-#define MAX_LABELS 100
+#define MAX_TOKENS 1024
 
 typedef enum {
-    REF_TYPE_ABS_ADDR,
-    REF_TYPE_REL_OFFSET
-} RefType;
+    TOKEN_REF_ABS_ADDR,
+    TOKEN_REF_REL_OFFSET,
+    TOKEN_LABEL,
+} TokenType;
 
 typedef struct {
-    char name[32];
+    TokenType type;
     uint16_t address;
-} LabelEntry;
+    char *buffer;
+} Token;
 
-LabelEntry label_table[MAX_LABELS];
-int label_count = 0;
+Token token_table[MAX_TOKENS];
+size_t token_count = 0;
 
-typedef struct {
-    uint16_t address;
-    char label_name[32];
-    RefType type;
-} ForwardRefEntry;
+Token reference_table[MAX_TOKENS];
+size_t reference_count = 0;
 
-ForwardRefEntry forward_refs[MAX_LABELS];
-int forward_ref_count = 0;
-
-void add_label(const char* name, uint16_t address) {
-    if (label_count >= MAX_LABELS) {
-        fprintf(stderr, "Error: Too many labels. Max %d allowed.\n", MAX_LABELS);
+void add_token(const char* buffer, uint16_t address) {
+    if (MAX_TOKENS <= token_count) {
+        fprintf(stderr, "Yacc: Max %d tokens allowed. Exiting.\n", MAX_TOKENS);
         exit(1);
     }
-    for (int i = 0; i < label_count; ++i) {
-        if (strcmp(label_table[i].name, name) == 0) {
-            fprintf(stderr, "Error: Duplicate label '%s' defined at 0x%04X. Already defined at 0x%04X.\n",
-                    name, address, label_table[i].address);
+
+    for (size_t index = 0; index < token_count; ++index) {
+        if (strcmp(token_table[index].buffer, buffer) == 0) {
+            fprintf(stderr, "Yacc: Duplicate token '%s' defined at 0x%04X. Already defined at 0x%04X. Exiting.\n",
+                            buffer, address, token_table[index].address);
             exit(1);
         }
     }
-    strncpy(label_table[label_count].name, name, sizeof(label_table[label_count].name) - 1);
-    label_table[label_count].name[sizeof(label_table[label_count].name) - 1] = '\0';
-    label_table[label_count].address = address;
-    label_count++;
+
+    token_table[token_count].buffer = strdup(buffer);
+    if (token_table[token_count].buffer == NULL) {
+        perror("Yacc: Failed to allocate memory for token buffer");
+        exit(1);
+    }
+
+    token_table[token_count].address = address;
+    token_table[token_count].type = TOKEN_LABEL;
+    ++token_count;
 }
 
-int get_label_address(const char* name, uint16_t* address) {
-    for (int i = 0; i < label_count; ++i) {
-        if (strcmp(label_table[i].name, name) == 0) {
-            *address = label_table[i].address;
+int get_token_address(const char* buffer, uint16_t* address) {
+    for (size_t index = 0; index < token_count; ++index) {
+        if (strcmp(token_table[index].buffer, buffer) == 0) {
+            *address = token_table[index].address;
             return 1;
         }
     }
     return 0;
 }
 
-void add_forward_ref(uint16_t address_to_fill, const char* label_name, RefType type) {
-    if (forward_ref_count >= MAX_LABELS) {
-        fprintf(stderr, "Error: Too many forward references. Max %d allowed.\n", MAX_LABELS);
+void add_forward_ref(uint16_t address, const char* buffer, TokenType type) {
+    if (reference_count >= MAX_TOKENS) {
+        fprintf(stderr, "Yacc: Max %d forward references allowed. Exiting.\n", MAX_TOKENS);
         exit(1);
     }
-    forward_refs[forward_ref_count].address = address_to_fill;
-    strncpy(forward_refs[forward_ref_count].label_name, label_name, sizeof(forward_refs[forward_ref_count].label_name) - 1);
-    forward_refs[forward_ref_count].label_name[sizeof(forward_refs[forward_ref_count].label_name) - 1] = '\0';
-    forward_refs[forward_ref_count].type = type;
-    forward_ref_count++;
+
+    reference_table[reference_count].address = address;
+
+    reference_table[reference_count].buffer = strdup(buffer);
+    if (reference_table[reference_count].buffer == NULL) {
+        perror("Yacc: Failed to allocate memory for reference buffer");
+        exit(1);
+    }
+
+    reference_table[reference_count].type = type;
+    ++reference_count;
 }
 
 void resolve_forward_references() {
-    for (int i = 0; i < forward_ref_count; ++i) {
-        uint16_t label_addr;
-        if (get_label_address(forward_refs[i].label_name, &label_addr)) {
-            if (forward_refs[i].type == REF_TYPE_ABS_ADDR) {
-                mos6502_write(CPU, forward_refs[i].address, (uint8_t)(label_addr & 0xFF));
-                mos6502_write(CPU, forward_refs[i].address + 1, (uint8_t)((label_addr >> 8) & 0xFF));
-            } else if (forward_refs[i].type == REF_TYPE_REL_OFFSET) {
-                int16_t offset = label_addr - (forward_refs[i].address + 1);
+    fprintf(stdout, "Yacc: Resolving forward references...\n");
+    for (size_t index = 0; index < reference_count; ++index) {
+        const Token token = reference_table[index];
 
-                if (offset < -128 || offset > 127) {
-                    fprintf(stderr, "Error: Branch target '%s' (0x%04X) is out of range for relative branch from 0x%04X (offset %d).\n",
-                            forward_refs[i].label_name, label_addr, forward_refs[i].address - 1, offset);
-                    exit(1);
-                }
-                mos6502_write(CPU, forward_refs[i].address, (uint8_t)(offset & 0xFF));
-            }
-        } else {
-            fprintf(stderr, "Error: Undefined label '%s' referenced at 0x%04X.\n",
-                    forward_refs[i].label_name, forward_refs[i].address);
+        uint16_t target_address;
+
+        if (!get_token_address(token.buffer, &target_address)) {
+            fprintf(stderr, "Yacc: Undefined token '%s' referenced at 0x%04X. Exiting.\n", token.buffer, token.address);
             exit(1);
         }
+
+        if (token.type == TOKEN_REF_ABS_ADDR) {
+            mos6502_write(CPU, token.address, (target_address & 0xFF));
+            mos6502_write(CPU, token.address + 1, ((target_address >> 8) & 0xFF));
+        } else if (token.type == TOKEN_REF_REL_OFFSET) {
+            int16_t offset = target_address - (token.address + 1);
+
+            if (offset < -128 || offset > 127) {
+                fprintf(stderr, "Yacc: Branch target '%s' (0x%04X) is out of range for relative branch from 0x%04X (offset %d). Exiting.\n",
+                        token.buffer, target_address, token.address - 1, offset);
+                exit(1);
+            }
+            mos6502_write(CPU, token.address, (int8_t)(offset & 0xFF));
+        }
+    }
+    fprintf(stdout, "Yacc: Forward references resolved.\n");
+}
+
+void cleanup_tables() {
+    for (size_t i = 0; i < token_count; ++i) {
+        free(token_table[i].buffer);
+        token_table[i].buffer = NULL;
+    }
+    for (size_t i = 0; i < reference_count; ++i) {
+        free(reference_table[i].buffer);
+        reference_table[i].buffer = NULL;
     }
 }
 
@@ -114,16 +139,16 @@ void resolve_forward_references() {
 %token <ival> HEX_VALUE DEC_VALUE
 %token <sval> STRING_LITERAL LABEL_DEF LABEL_REF
 
-%token ORG_DIR BYTE_DIR
-
 %token LDX_OP LDA_OP BEQ_OP STA_OP INX_OP JMP_OP BRK_OP
+
+%token ORG_DIR BYTE_DIR
 
 %token HASH
 %token COMMA
 %token REG_X
 
 %type <ival> address_operand immediate_operand
-%type <sval> label_name
+%type <sval> buffer
 
 %%
 
@@ -131,31 +156,43 @@ program:
     lines
     {
         resolve_forward_references();
-        printf("\n--- Assembly completed. Starting MOS 6502 simulation ---\n");
-        CPU->PC = current_address;
-        while (!mos6502_should_stop(CPU)) {
-            mos6502_execute(CPU);
+
+        printf("Yacc: MOS6502 execution started.\n");
+
+        if (CPU == NULL) {
+            fprintf(stderr, "Yacc: CPU not initialized. Exiting.\n");
+            exit(1);
         }
-        printf("\n--- Simulation finished ---\n");
+
+        CPU->PC = current_address;
+
+        mos6502_execute(CPU);
+
+        mos6502_dump(CPU, stdout);
+
+        printf("Yacc: MOS6502 execution finished.\n");
+
+        cleanup_tables();
     }
 ;
 
 lines:
+    /* empty */
     | lines line
 ;
 
 line:
     NEWLINE
-    | label_definition NEWLINE
+    | token_definition NEWLINE
     | instruction NEWLINE
     | directive NEWLINE
-    | label_definition instruction NEWLINE
-    | label_definition directive NEWLINE
+    | token_definition instruction NEWLINE
+    | token_definition directive NEWLINE
 ;
 
-label_definition:
+token_definition:
     LABEL_DEF {
-        add_label($1, current_address);
+        add_token($1, current_address);
         free($1);
     }
 ;
@@ -163,36 +200,36 @@ label_definition:
 instruction:
     LDX_OP HASH immediate_operand {
         mos6502_write(CPU, current_address++, MOS6502_LDX_IMMEDIATE_MODE);
-        mos6502_write(CPU, current_address++, (uint8_t)$3);
+        mos6502_write(CPU, current_address++, $3);
     }
-    | LDA_OP label_name COMMA REG_X {
+    | LDA_OP buffer COMMA REG_X {
         mos6502_write(CPU, current_address++, MOS6502_LDA_ABSOLUTE_X_MODE);
-        add_forward_ref(current_address, $2, REF_TYPE_ABS_ADDR);
+        add_forward_ref(current_address, $2, TOKEN_REF_ABS_ADDR);
         current_address += 2;
         free($2);
     }
-    | BEQ_OP label_name {
+    | BEQ_OP buffer {
         mos6502_write(CPU, current_address++, MOS6502_BEQ_RELATIVE_MODE);
-        add_forward_ref(current_address, $2, REF_TYPE_REL_OFFSET);
+        add_forward_ref(current_address, $2, TOKEN_REF_REL_OFFSET);
         current_address++;
         free($2);
     }
     | STA_OP address_operand {
         mos6502_write(CPU, current_address++, MOS6502_STA_ABSOLUTE_MODE);
-        mos6502_write(CPU, current_address++, (uint8_t)($2 & 0xFF));
-        mos6502_write(CPU, current_address++, (uint8_t)(($2 >> 8) & 0xFF));
+        mos6502_write(CPU, current_address++, ($2 & 0xFF));
+        mos6502_write(CPU, current_address++, (($2 >> 8) & 0xFF));
     }
     | INX_OP {
         mos6502_write(CPU, current_address++, MOS6502_INX_IMPLIED_MODE);
     }
     | JMP_OP address_operand {
         mos6502_write(CPU, current_address++, MOS6502_JMP_ABSOLUTE_MODE);
-        mos6502_write(CPU, current_address++, (uint8_t)($2 & 0xFF));
-        mos6502_write(CPU, current_address++, (uint8_t)(($2 >> 8) & 0xFF));
+        mos6502_write(CPU, current_address++, ($2 & 0xFF));
+        mos6502_write(CPU, current_address++, (($2 >> 8) & 0xFF));
     }
-    | JMP_OP label_name {
+    | JMP_OP buffer {
         mos6502_write(CPU, current_address++, MOS6502_JMP_ABSOLUTE_MODE);
-        add_forward_ref(current_address, $2, REF_TYPE_ABS_ADDR);
+        add_forward_ref(current_address, $2, TOKEN_REF_ABS_ADDR);
         current_address += 2;
         free($2);
     }
@@ -216,14 +253,14 @@ byte_list:
 
 byte_item:
     HEX_VALUE {
-        mos6502_write(CPU, current_address++, (uint8_t)$1);
+        mos6502_write(CPU, current_address++, $1);
     }
     | DEC_VALUE {
-        mos6502_write(CPU, current_address++, (uint8_t)$1);
+        mos6502_write(CPU, current_address++, $1);
     }
     | STRING_LITERAL {
-        for (int i = 0; i < strlen($1); ++i) {
-            mos6502_write(CPU, current_address++, (uint8_t)$1[i]);
+        for (size_t index = 0; index < strlen($1); ++index) {
+            mos6502_write(CPU, current_address++, $1[index]);
         }
         free($1);
     }
@@ -231,13 +268,15 @@ byte_item:
 
 address_operand:
     HEX_VALUE { $$ = $1; }
-    | label_name {
-        uint16_t addr;
-        if (get_label_address($1, &addr)) {
-            $$ = addr;
-        } else {
-            $$ = 0;
+    | buffer {
+        uint16_t address;
+        if (!get_token_address($1, &address)) {
+             fprintf(stderr, "Yacc: Undefined label '%s' used as direct address at 0x%04X. This type of reference is not handled as a forward reference for this instruction (STA/JMP direct). Exiting.\n",
+                             $1, current_address);
+             free($1);
+             exit(1);
         }
+        $$ = address;
         free($1);
     }
 ;
@@ -247,7 +286,7 @@ immediate_operand:
     | DEC_VALUE { $$ = $1; }
 ;
 
-label_name:
+buffer:
     LABEL_REF { $$ = $1; }
 ;
 

@@ -1,7 +1,6 @@
 #ifndef __MOS6502__
 #define __MOS6502__
 
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -64,8 +63,8 @@ uint8_t mos6502_pop(MOS6502 *);
 
 void mos6502_execute(MOS6502 *);
 
-bool mos6502_should_stop(const MOS6502 *);
-
 void mos6502_dump(const MOS6502 *, FILE *);
+
+void mos6502_dump_status(const MOS6502 *, FILE *);
 
 #endif

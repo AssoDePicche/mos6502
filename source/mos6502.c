@@ -26,7 +26,8 @@ static void mos6502_update_z_n_status(MOS6502 *this, const uint8_t value) {
 static void LDX_IMMEDIATE_MODE(MOS6502 *this) {
   const uint8_t operand = mos6502_read(this, this->PC + 1);
 
-  fprintf(stdout, "Loading %02X into REG X (LDX #$%02X)\n", operand, operand);
+  fprintf(stdout, "MOS6502: Loading %02X into REG X (LDX #$%02X)\n", operand,
+          operand);
 
   this->X = operand;
 
@@ -39,7 +40,8 @@ static void LDA_ABSOLUTE_X_MODE(MOS6502 *this) {
   uint16_t base_address = mos6502_read(this, this->PC + 1);
   base_address |= ((uint16_t)mos6502_read(this, this->PC + 2) << 8);
 
-  fprintf(stdout, "Loading into REG A from absolute address (LDA $%04X,X)\n",
+  fprintf(stdout,
+          "MOS6502: Loading into REG A from absolute address (LDA $%04X,X)\n",
           base_address);
 
   const uint16_t address = base_address + this->X;
@@ -57,10 +59,10 @@ static void BEQ_RELATIVE_MODE(MOS6502 *this) {
 
   if (mos6502_get_status(this, MOS6502_STATUS_Z)) {
     this->PC += offset;
-    fprintf(stdout, "Branch taken to 0x%04X (BEQ offset %d)\n", this->PC,
-            offset);
+    fprintf(stdout, "MOS6502: Branch taken to 0x%04X (BEQ offset %d)\n",
+            this->PC, offset);
   } else {
-    fprintf(stdout, "Branch not taken (BEQ).\n");
+    fprintf(stdout, "MOS6502: Branch not taken (BEQ).\n");
   }
 }
 
@@ -68,9 +70,10 @@ static void STA_ABSOLUTE_MODE(MOS6502 *this) {
   uint16_t address = mos6502_read(this, this->PC + 1);
   address |= ((uint16_t)mos6502_read(this, this->PC + 2) << 8);
 
-  fprintf(stdout,
-          "Writing REG A (0x%02X) value to absolute address (STA $%04X)\n",
-          this->A, address);
+  fprintf(
+      stdout,
+      "MOS6502: Writing REG A (0x%02X) value to absolute address (STA $%04X)\n",
+      this->A, address);
 
   mos6502_write(this, address, this->A);
 
@@ -78,7 +81,7 @@ static void STA_ABSOLUTE_MODE(MOS6502 *this) {
 }
 
 static void INX_IMPLIED_MODE(MOS6502 *this) {
-  fprintf(stdout, "Incrementing REG X\n");
+  fprintf(stdout, "MOS6502: Incrementing REG X\n");
 
   ++this->X;
 
@@ -91,16 +94,16 @@ static void JMP_ABSOLUTE_MODE(MOS6502 *this) {
   uint16_t target_address = mos6502_read(this, this->PC + 1);
   target_address |= ((uint16_t)mos6502_read(this, this->PC + 2) << 8);
 
-  fprintf(stdout, "Jumping to absolute address 0x%04X (JMP $%04X)\n",
+  fprintf(stdout, "MOS6502: Jumping to absolute address 0x%04X (JMP $%04X)\n",
           target_address, target_address);
 
   this->PC = target_address;
 }
 
 static void BRK_IMPLIED_MODE(MOS6502 *this) {
-  fprintf(
-      stdout,
-      "Break command (BRK). Pushing PC and P, jumping to IRQ/BRK vector.\n");
+  fprintf(stdout,
+          "MOS6502: Break command (BRK). Pushing PC and P, jumping to IRQ/BRK "
+          "vector.\n");
 
   mos6502_push(this, (this->PC + 2) >> 8);
   mos6502_push(this, (this->PC + 2) & 0xFF);
@@ -147,13 +150,14 @@ void mos6502_destruct(MOS6502 *this) {
 }
 
 uint8_t mos6502_read(const MOS6502 *this, const uint16_t address) {
-  fprintf(stdout, "Reading address '0x%04X'\n", address);
+  fprintf(stdout, "MOS6502: Reading address '0x%04X'\n", address);
 
   return this->BUS[address];
 }
 
 void mos6502_write(MOS6502 *this, const uint16_t address, const uint8_t value) {
-  fprintf(stdout, "Writing '0x%02X' on '0x%04X' address\n", value, address);
+  fprintf(stdout, "MOS6502: Writing '0x%02X' on '0x%04X' address\n", value,
+          address);
 
   this->BUS[address] = value;
 }
@@ -171,21 +175,21 @@ void mos6502_clear_status(MOS6502 *this, const uint8_t status) {
 }
 
 void mos6502_push(MOS6502 *this, const uint8_t value) {
-  fprintf(stdout, "Pushing 0x%02X on STACK 0x%04X address\n", value,
+  fprintf(stdout, "MOS6502: Pushing 0x%02X on STACK 0x%04X address\n", value,
           MOS6502_STACK + this->SP);
 
   this->BUS[MOS6502_STACK + this->SP] = value;
 
   --this->SP;
-  fprintf(stdout, "Decrementing STACK POINTER to 0x%02X\n", this->SP);
+  fprintf(stdout, "MOS6502: Decrementing STACK POINTER to 0x%02X\n", this->SP);
 }
 
 uint8_t mos6502_pop(MOS6502 *this) {
   ++this->SP;
-  fprintf(stdout, "Incrementing STACK POINTER to 0x%02X\n", this->SP);
+  fprintf(stdout, "MOS6502: Incrementing STACK POINTER to 0x%02X\n", this->SP);
 
   uint8_t value = this->BUS[MOS6502_STACK + this->SP];
-  fprintf(stdout, "Popping 0x%02X from 0x%04X address\n", value,
+  fprintf(stdout, "MOS6502: Popping 0x%02X from 0x%04X address\n", value,
           MOS6502_STACK + this->SP);
 
   return value;
@@ -194,7 +198,8 @@ uint8_t mos6502_pop(MOS6502 *this) {
 void mos6502_execute(MOS6502 *this) {
   const uint8_t opcode = mos6502_read(this, this->PC);
 
-  fprintf(stdout, "Executing instruction 0x%02X at 0x%04X\n", opcode, this->PC);
+  fprintf(stdout, "MOS6502: Executing instruction 0x%02X at 0x%04X\n", opcode,
+          this->PC);
 
   const mos6502_instruction_handler handler =
       MOS6502_INSTRUCTIONS_TABLE[opcode];

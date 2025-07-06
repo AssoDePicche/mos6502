@@ -9,7 +9,7 @@
 
 typedef void (*mos6502_instruction_handler)(MOS6502 *);
 
-static void mos6502_update_z_n_status(MOS6502 *this, const uint8_t value) {
+void mos6502_update_z_n_status(MOS6502 *this, const uint8_t value) {
   if (0 == value) {
     mos6502_set_status(this, MOS6502_STATUS_Z);
   } else {
@@ -23,7 +23,7 @@ static void mos6502_update_z_n_status(MOS6502 *this, const uint8_t value) {
   }
 }
 
-static void LDX_IMMEDIATE_MODE(MOS6502 *this) {
+void LDX_IMMEDIATE_MODE(MOS6502 *this) {
   const uint8_t operand = mos6502_read(this, this->PC + 1);
 
   fprintf(stdout, "MOS6502: Loading %02X into REG X (LDX #$%02X)\n", operand,
@@ -36,7 +36,7 @@ static void LDX_IMMEDIATE_MODE(MOS6502 *this) {
   mos6502_update_z_n_status(this, this->X);
 }
 
-static void LDA_ABSOLUTE_X_MODE(MOS6502 *this) {
+void LDA_ABSOLUTE_X_MODE(MOS6502 *this) {
   uint16_t base_address = mos6502_read(this, this->PC + 1);
   base_address |= ((uint16_t)mos6502_read(this, this->PC + 2) << 8);
 
@@ -53,7 +53,7 @@ static void LDA_ABSOLUTE_X_MODE(MOS6502 *this) {
   mos6502_update_z_n_status(this, this->A);
 }
 
-static void BEQ_RELATIVE_MODE(MOS6502 *this) {
+void BEQ_RELATIVE_MODE(MOS6502 *this) {
   int8_t offset = (int8_t)mos6502_read(this, this->PC + 1);
   this->PC += 2;
 
@@ -66,7 +66,7 @@ static void BEQ_RELATIVE_MODE(MOS6502 *this) {
   }
 }
 
-static void STA_ABSOLUTE_MODE(MOS6502 *this) {
+void STA_ABSOLUTE_MODE(MOS6502 *this) {
   uint16_t address = mos6502_read(this, this->PC + 1);
   address |= ((uint16_t)mos6502_read(this, this->PC + 2) << 8);
 
@@ -80,7 +80,7 @@ static void STA_ABSOLUTE_MODE(MOS6502 *this) {
   this->PC += 3;
 }
 
-static void INX_IMPLIED_MODE(MOS6502 *this) {
+void INX_IMPLIED_MODE(MOS6502 *this) {
   fprintf(stdout, "MOS6502: Incrementing REG X\n");
 
   ++this->X;
@@ -90,7 +90,7 @@ static void INX_IMPLIED_MODE(MOS6502 *this) {
   mos6502_update_z_n_status(this, this->X);
 }
 
-static void JMP_ABSOLUTE_MODE(MOS6502 *this) {
+void JMP_ABSOLUTE_MODE(MOS6502 *this) {
   uint16_t target_address = mos6502_read(this, this->PC + 1);
   target_address |= ((uint16_t)mos6502_read(this, this->PC + 2) << 8);
 
@@ -100,7 +100,7 @@ static void JMP_ABSOLUTE_MODE(MOS6502 *this) {
   this->PC = target_address;
 }
 
-static void BRK_IMPLIED_MODE(MOS6502 *this) {
+void BRK_IMPLIED_MODE(MOS6502 *this) {
   fprintf(stdout,
           "MOS6502: Break command (BRK). Pushing PC and P, jumping to IRQ/BRK "
           "vector.\n");
